@@ -250,16 +250,16 @@ func Withdraw(order string, sum float64, db *sql.DB, ctx context.Context) error 
 }
 
 // AllWithdrawals показывает все транзакции с выводом средств
-func AllWithdrawals(db *sql.DB, ctx context.Context) ([]TransactionW, error) {
+func WithdrawalsByUser(userID int, db *sql.DB, ctx context.Context) ([]TransactionW, error) {
 	transactions := make([]TransactionW, 0)
 	sqlSt := `select ord."number", ls.points, ls.created_at 
 		from loyalty_system ls 
 		join "order" ord
 		on ord.id = ls.order_id
-		where ls.transacton = $1
+		where ls.transacton = $1 and ls.customer_id = $2
 		order by created_at desc;`
 
-	rows, err := db.QueryContext(ctx, sqlSt, TransactionWithdrawal)
+	rows, err := db.QueryContext(ctx, sqlSt, TransactionWithdrawal, userID)
 	if err != nil {
 		return nil, err
 	}

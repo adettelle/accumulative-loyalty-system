@@ -398,8 +398,7 @@ func NewTransactionWResponse(transaction model.TransactionW) TransactionWRespons
 // 	return res
 // }
 
-// Хендлер доступен только авторизованному пользователю !!!!!!!!!!!!!!!!!!!!!!!
-// 401 — пользователь не авторизован
+// Хендлер доступен только авторизованному пользователю
 func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -407,9 +406,22 @@ func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	transactions, err := model.AllWithdrawals(s.DB, s.Ctx)
+	userLogin := r.Header.Get("x-user")
+	if userLogin == "" {
+		w.WriteHeader(http.StatusUnauthorized) // пользователь не авторизован
+	}
+	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
-		log.Println(err) // что делать с ошибками?????????????????
+		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
+		return
+	}
+	if customer == nil {
+		w.WriteHeader(http.StatusNotFound) // это значит, нет такого пользователя
+		return
+	}
+
+	transactions, err := model.WithdrawalsByUser(customer.Id, s.DB, s.Ctx)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
