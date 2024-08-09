@@ -7,20 +7,31 @@ import (
 	"net/http"
 
 	"github.com/adettelle/accumulative-loyalty-system/internal/database"
+	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/config"
 	"github.com/adettelle/accumulative-loyalty-system/internal/server/api"
 	"github.com/adettelle/accumulative-loyalty-system/pkg/mware"
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+	var uri string
+
+	config, err := config.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if config.DBUri != "" {
+		uri = config.DBUri
+	}
 	ps := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		`localhost`, `5433`, `postgres`, `password`, `loyalty-system`)
+		`localhost`, uri, `postgres`, `password`, `loyalty-system`) // `5433`
+
 	db, err := database.Connect(ps)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// model.GetUserByOrder("123", storage.DB, storage.Ctx)
 	err = database.CreateTable(db, context.Background())
 	if err != nil {
 		log.Fatal(err)
@@ -34,7 +45,7 @@ func main() {
 	}
 
 	fmt.Println("Starting server")
-	address := "localhost:8080"
+	address := config.Address //"localhost:8080"
 
 	r := chi.NewRouter()
 

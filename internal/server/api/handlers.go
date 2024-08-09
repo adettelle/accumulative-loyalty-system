@@ -13,7 +13,6 @@ import (
 	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/luhn"
 	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/model"
 	"github.com/adettelle/accumulative-loyalty-system/internal/security"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type DBStorage struct {
@@ -25,6 +24,51 @@ type DBStorage struct {
 type Auth struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
+}
+
+type TransactionWResponse struct {
+	OrderNumber string    `json:"order"`
+	Points      float64   `json:"sum"`
+	CratedAt    time.Time `json:"crated_at"`
+}
+
+type OrderResponse struct {
+	Number        string    `json:"order"`
+	Status        string    `json:"status"`
+	Points        *float64  `json:"points,omitempty"`
+	Accrual       float64   `json:"accrual,omitempty"`
+	Withdrawal    float64   `json:"withdrawal,omitempty"`
+	CratedAt      time.Time `json:"crated_at"`
+	SumToWithdraw float64   `json:"sum,omitempty"`
+}
+
+// type OrdersListResponse struct {
+// 	Orders []OrderResponse `json:"orders"`
+// }
+
+func NewOrderResponse(order model.Order) OrderResponse {
+	res := OrderResponse{
+		Number:   order.Number,
+		Status:   order.Status,
+		CratedAt: order.CratedAt, // Формат даты — RFC3339
+	}
+
+	if order.Points > 0 {
+		if *order.Transaction == model.TransactionAccrual {
+			res.Accrual = order.Points
+		} else if *order.Transaction == model.TransactionWithdrawal {
+			res.Withdrawal = order.Points
+		}
+	}
+	return res
+}
+
+func NewOrderListResponse(orders []model.Order) []OrderResponse {
+	res := []OrderResponse{}
+	for _, order := range orders {
+		res = append(res, NewOrderResponse(order))
+	}
+	return res
 }
 
 func (s *DBStorage) Login(w http.ResponseWriter, r *http.Request) {
@@ -57,35 +101,6 @@ func (s *DBStorage) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
-
-/*
-func CheckRequestToken(w http.ResponseWriter, r *http.Request) error {
-	// получаем http header вида 'Bearer {jwt}'
-	authHeaderValue := r.Header.Get("Authorization")
-	log.Println("authHeaderValue:", authHeaderValue)
-	if authHeaderValue == "" {
-		w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
-		return fmt.Errorf("error in CheckRequestToken")
-	}
-
-	// проверяем доступы
-	if authHeaderValue != "" {
-		bearerToken := strings.Split(authHeaderValue, " ")
-		log.Println("bearerToken:", bearerToken[1])
-		if len(bearerToken) == 2 {
-			login, ok := security.VerifyToken(bearerToken[1])
-			if !ok {
-				w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
-				return fmt.Errorf("error in CheckRequestToken")
-			} else {
-				r.Header.Set("x-user", login) // x - кастомные хэддеры приянто называть с перфиксом x
-				// userLogin = login
-			}
-		}
-	}
-	return nil
-}
-*/
 
 // Хендлер доступен только авторизованному пользователю
 func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
@@ -149,47 +164,7 @@ func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type OrderResponse struct {
-	Number        string    `json:"order"`
-	Status        string    `json:"status"`
-	Points        *float64  `json:"points,omitempty"`
-	Accrual       float64   `json:"accrual,omitempty"`
-	Withdrawal    float64   `json:"withdrawal,omitempty"`
-	CratedAt      time.Time `json:"crated_at"`
-	SumToWithdraw float64   `json:"sum,omitempty"`
-}
-
-// type OrdersListResponse struct {
-// 	Orders []OrderResponse `json:"orders"`
-// }
-
-func NewOrderResponse(order model.Order) OrderResponse {
-	res := OrderResponse{
-		Number:   order.Number,
-		Status:   order.Status,
-		CratedAt: order.CratedAt, // Формат даты — RFC3339
-	}
-
-	if order.Points > 0 {
-		if *order.Transaction == model.TransactionAccrual {
-			res.Accrual = order.Points
-		} else if *order.Transaction == model.TransactionWithdrawal {
-			res.Withdrawal = order.Points
-		}
-	}
-	return res
-}
-
-func NewOrderListResponse(orders []model.Order) []OrderResponse {
-	res := []OrderResponse{}
-	for _, order := range orders {
-		res = append(res, NewOrderResponse(order))
-	}
-	return res
-}
-
-// Хендлер доступен только авторизованному пользователю!!!!!!!!!!!!!!!!!!
-// 401 — пользователь не авторизован.
+// Хендлер доступен только авторизованному пользователю
 func (s *DBStorage) GetOrders(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -265,14 +240,14 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	pointsAccrual, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
 	if err != nil {
-		log.Println(err) // что делать с ошибками?????? InternalServerError всегда лучше писать!!!!!!!!!!!!
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	pointsWithdrawal, err := model.GetWithdrawalPoints(customer.Id, s.DB, s.Ctx)
 	if err != nil {
-		log.Println(err) // что делать с ошибками?????????????????
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -284,12 +259,14 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(points)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write(resp)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -302,7 +279,6 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 // }
 
 // Хендлер доступен только авторизованному пользователю
-// 401 — пользователь не авторизован
 func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -315,6 +291,7 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
 		return
 	}
@@ -334,7 +311,7 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.Unmarshal(buf.Bytes(), &orderResp); err != nil {
-		// http.Error(w, err.Error(), http.StatusInternalServerError) // внутренняя ошибка сервера
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -349,31 +326,25 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 
 	sumInAccount, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) //?????????????
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	log.Println("sumInAccount:", sumInAccount)
 	log.Println("orderResp.Sum:", orderResp.SumToWithdraw)
 
 	if sumInAccount < orderResp.SumToWithdraw {
-		// http.Error(w, "sum in account is less than withdrawal ", http.StatusPaymentRequired) // на счету недостаточно средств
-		w.WriteHeader(http.StatusPaymentRequired)
+		w.WriteHeader(http.StatusPaymentRequired) // на счету недостаточно средств
 		return
 	}
 
 	err = model.Withdraw(orderResp.Number, orderResp.SumToWithdraw, s.DB, s.Ctx)
 	if err != nil {
-		// http.Error(w, err.Error(), http.StatusInternalServerError) // внутренняя ошибка сервера
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError) // внутренняя ошибка сервера
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-}
-
-type TransactionWResponse struct {
-	OrderNumber string    `json:"order"`
-	Points      float64   `json:"sum"`
-	CratedAt    time.Time `json:"crated_at"`
 }
 
 // type TransactionWListResponse struct {
@@ -386,6 +357,13 @@ func NewTransactionWResponse(transaction model.TransactionW) TransactionWRespons
 		Points:      transaction.Points,
 		CratedAt:    transaction.CratedAt, // Формат даты — RFC3339
 	}
+}
+func NewTransactionWListResponse(transactions []model.TransactionW) []TransactionWResponse {
+	res := []TransactionWResponse{}
+	for _, transaction := range transactions {
+		res = append(res, NewTransactionWResponse(transaction))
+	}
+	return res
 }
 
 // func NewTransactionWListResponse(transactions []model.TransactionW) TransactionWListResponse {
@@ -412,6 +390,7 @@ func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	}
 	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
 		return
 	}
@@ -422,6 +401,7 @@ func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	transactions, err := model.WithdrawalsByUser(customer.Id, s.DB, s.Ctx)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -431,20 +411,23 @@ func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := json.Marshal(transactions) // NewTransactionWListResponse(transactions)
+	resp, err := json.Marshal(NewTransactionWListResponse(transactions)) // NewTransactionWListResponse(transactions)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write(resp)
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
 
+/*
 func CheckToken(signedToken string) bool {
 	// создаём секретный ключ для подписи
 	secret := []byte("my_secret_key")
@@ -467,3 +450,32 @@ func CheckToken(signedToken string) bool {
 		return false
 	}
 }
+*/
+/*
+func CheckRequestToken(w http.ResponseWriter, r *http.Request) error {
+	// получаем http header вида 'Bearer {jwt}'
+	authHeaderValue := r.Header.Get("Authorization")
+	log.Println("authHeaderValue:", authHeaderValue)
+	if authHeaderValue == "" {
+		w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
+		return fmt.Errorf("error in CheckRequestToken")
+	}
+
+	// проверяем доступы
+	if authHeaderValue != "" {
+		bearerToken := strings.Split(authHeaderValue, " ")
+		log.Println("bearerToken:", bearerToken[1])
+		if len(bearerToken) == 2 {
+			login, ok := security.VerifyToken(bearerToken[1])
+			if !ok {
+				w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
+				return fmt.Errorf("error in CheckRequestToken")
+			} else {
+				r.Header.Set("x-user", login) // x - кастомные хэддеры приянто называть с перфиксом x
+				// userLogin = login
+			}
+		}
+	}
+	return nil
+}
+*/

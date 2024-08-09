@@ -133,7 +133,7 @@ func OrderExists(numOrder string, db *sql.DB, ctx context.Context) (bool, error)
 func UserHasOrder(numOrder string, userId int, db *sql.DB, ctx context.Context) (int, bool, error) {
 	// если 0, err=nil - это значит, что юзера с таким заказом нет
 	userIdByGet, err := GetUserByOrder(numOrder, db, ctx)
-	if err == nil { // такого номера заказа ни у кого нет
+	if err == sql.ErrNoRows { // такого номера заказа ни у кого нет
 		log.Printf("There is no user with order number %s", numOrder)
 		return userIdByGet, false, nil
 	}
