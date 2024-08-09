@@ -3,7 +3,6 @@ package model
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
@@ -19,138 +18,138 @@ const (
 	TransactionWithdrawal = "withdrawal"
 )
 
-func CreateTable(db *sql.DB, ctx context.Context) error { // user
-	sqlStCustomer := `create table if not exists customer 
-		(id serial primary key, 
-		first_name varchar(30) not null, 
-		last_name varchar(30) not null,
-		email varchar(100) not null,
-		phone varchar(30) not null, 
-		login varchar(100),
-		password varchar(255),
-		created_at timestamp not null default now(),
-		unique(phone, email));`
+// func CreateTable(db *sql.DB, ctx context.Context) error { // user
+// 	sqlStCustomer := `create table if not exists customer
+// 		(id serial primary key,
+// 		first_name varchar(30) not null,
+// 		last_name varchar(30) not null,
+// 		email varchar(100) not null,
+// 		phone varchar(30) not null,
+// 		login varchar(100),
+// 		password varchar(255),
+// 		created_at timestamp not null default now(),
+// 		unique(phone, email));`
 
-	_, err := db.ExecContext(ctx, sqlStCustomer)
-	if err != nil {
-		return err
-	}
+// 	_, err := db.ExecContext(ctx, sqlStCustomer)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// statusType := `create type status_type_enum as enum ('new', 'processing', 'invalid', 'processed');`
-	// _, err = db.ExecContext(ctx, statusType)
-	// if err != nil {
-	// 	return err
-	// }
+// 	// statusType := `create type status_type_enum as enum ('new', 'processing', 'invalid', 'processed');`
+// 	// _, err = db.ExecContext(ctx, statusType)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
 
-	sqlStOrder := `create table if not exists "order"
-		(id serial primary key,
-		customer_id integer, 
-		number text,
-		status status_type_enum not null, 
-		created_at timestamp not null default now(),
-		foreign key (customer_id) references customer (id),
-		unique(number, customer_id));`
+// 	sqlStOrder := `create table if not exists "order"
+// 		(id serial primary key,
+// 		customer_id integer,
+// 		number text,
+// 		status status_type_enum not null,
+// 		created_at timestamp not null default now(),
+// 		foreign key (customer_id) references customer (id),
+// 		unique(number, customer_id));`
 
-	_, err = db.ExecContext(ctx, sqlStOrder)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStOrder)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// начисления и списания
-	// transactionType := `create type transaction_type_enum as enum ('accrual', 'withdrawal');`
-	// _, err = db.ExecContext(ctx, transactionType)
-	// if err != nil {
-	// 	return err
-	// }
+// 	// начисления и списания
+// 	// transactionType := `create type transaction_type_enum as enum ('accrual', 'withdrawal');`
+// 	// _, err = db.ExecContext(ctx, transactionType)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
 
-	sqlStLoyalty := `create table if not exists loyalty_system
-		(id serial primary key,
-		customer_id integer, 
-		order_id integer,
-		points double precision,
-		transacton transaction_type_enum, 
-		created_at timestamp not null default now(),
-		unique(customer_id, order_id),
-		foreign key (customer_id) references customer (id),
-		foreign key (order_id) references "order" (id));`
+// 	sqlStLoyalty := `create table if not exists loyalty_system
+// 		(id serial primary key,
+// 		customer_id integer,
+// 		order_id integer,
+// 		points double precision,
+// 		transacton transaction_type_enum,
+// 		created_at timestamp not null default now(),
+// 		unique(customer_id, order_id),
+// 		foreign key (customer_id) references customer (id),
+// 		foreign key (order_id) references "order" (id));`
 
-	_, err = db.ExecContext(ctx, sqlStLoyalty)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStLoyalty)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	sqlStProduct := `create table if not exists product
-		(id serial primary key,
-		title varchar(60), 
-		price integer);`
+// 	sqlStProduct := `create table if not exists product
+// 		(id serial primary key,
+// 		title varchar(60),
+// 		price integer);`
 
-	_, err = db.ExecContext(ctx, sqlStProduct)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStProduct)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	sqlStOrderProduct := `create table if not exists order_product
-		(id serial primary key,
-		order_id integer references "order" (id), 
-		product_id integer references product (id),
-		amount integer);`
+// 	sqlStOrderProduct := `create table if not exists order_product
+// 		(id serial primary key,
+// 		order_id integer references "order" (id),
+// 		product_id integer references product (id),
+// 		amount integer);`
 
-	_, err = db.ExecContext(ctx, sqlStOrderProduct)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStOrderProduct)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// rewardType := `create type reward_type_enum as enum ('percent', 'points');`
-	// _, err = db.ExecContext(ctx, rewardType)
-	// if err != nil {
-	// 	return err
-	// }
+// 	// rewardType := `create type reward_type_enum as enum ('percent', 'points');`
+// 	// _, err = db.ExecContext(ctx, rewardType)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
 
-	sqlStReward := `create table if not exists reward
-		(id serial primary key,
-		title varchar(60), 
-		product_id integer references product (id),
-		description varchar(255),
-		reward_type reward_type_enum not null);`
+// 	sqlStReward := `create table if not exists reward
+// 		(id serial primary key,
+// 		title varchar(60),
+// 		product_id integer references product (id),
+// 		description varchar(255),
+// 		reward_type reward_type_enum not null);`
 
-	_, err = db.ExecContext(ctx, sqlStReward)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStReward)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	sqlStRewardSystem := `create table if not exists reward_system
-		(id serial primary key, 
-		order_id integer references "order" (id),
-		points double precision);`
+// 	sqlStRewardSystem := `create table if not exists reward_system
+// 		(id serial primary key,
+// 		order_id integer references "order" (id),
+// 		points double precision);`
 
-	_, err = db.ExecContext(ctx, sqlStRewardSystem)
-	if err != nil {
-		return err
-	}
+// 	_, err = db.ExecContext(ctx, sqlStRewardSystem)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func Connect(dbParams string) (*sql.DB, error) {
-	log.Println("Connecting to DB", dbParams)
-	db, err := sql.Open("pgx", dbParams)
-	if err != nil {
-		return nil, err
-	}
-	// defer db.Close()
+// func Connect(dbParams string) (*sql.DB, error) {
+// 	log.Println("Connecting to DB", dbParams)
+// 	db, err := sql.Open("pgx", dbParams)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// defer db.Close()
 
-	// делаем запрос
-	row := db.QueryRowContext(context.Background(), "SELECT 1;")
-	// готовим переменную для чтения результата
-	var id int64
-	err = row.Scan(&id) // разбираем результат
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(id)
+// 	// делаем запрос
+// 	row := db.QueryRowContext(context.Background(), "SELECT 1;")
+// 	// готовим переменную для чтения результата
+// 	var id int64
+// 	err = row.Scan(&id) // разбираем результат
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	fmt.Println(id)
 
-	return db, nil
-}
+// 	return db, nil
+// }
 
 // если возврат (0, err) - это значит, что юзера с таким заказом нет
 func GetUserByOrderOld(numOrder string, db *sql.DB, ctx context.Context) (int, error) {
@@ -266,11 +265,21 @@ func UserHasOrder(numOrder string, userId int, db *sql.DB, ctx context.Context) 
 // }
 
 type Order struct {
-	Id       string
+	Id       string // почему string???????????????
 	Number   string
 	Status   string
 	Points   float64
 	CratedAt time.Time
+}
+
+type Customer struct {
+	Id        int // почему string???????????????
+	FirstName string
+	LastName  string
+	Email     string
+	Phone     string
+	// Roles
+	// IsDeleted
 }
 
 func GetOrders(db *sql.DB, ctx context.Context) ([]Order, error) {
@@ -300,10 +309,9 @@ func GetOrders(db *sql.DB, ctx context.Context) ([]Order, error) {
 	return orders, nil
 }
 
-// как передать пользователя???????????????
 // GetAccrualPoints показывает количество набранных баллов пользователя
-func GetAccrualPoints(db *sql.DB, ctx context.Context) (float64, error) {
-	userID := 1
+func GetAccrualPoints(userID int, db *sql.DB, ctx context.Context) (float64, error) {
+	// userID := 1
 	sqlSt := `select ls.points from loyalty_system ls 
 		join customer c 
 		on c.id = ls.customer_id 
@@ -322,10 +330,8 @@ func GetAccrualPoints(db *sql.DB, ctx context.Context) (float64, error) {
 	return pointsAccrual, nil
 }
 
-// как передать пользователя???????????????
 // GetWithdrawalPoints показывает количество потраченных баллов пользователя
-func GetWithdrawalPoints(db *sql.DB, ctx context.Context) (float64, error) {
-	userID := 1
+func GetWithdrawalPoints(userID int, db *sql.DB, ctx context.Context) (float64, error) {
 	sqlSt := `select ls.points from loyalty_system ls 
 		join customer c 
 		on c.id = ls.customer_id 
@@ -396,4 +402,21 @@ func AllWithdrawals(db *sql.DB, ctx context.Context) ([]TransactionW, error) {
 		transactions = append(transactions, tr)
 	}
 	return transactions, nil
+}
+
+func GetCustomerByLogin(login string, db *sql.DB, ctx context.Context) (*Customer, error) {
+	sqlSt := `select id, first_name, last_name, email, phone from customer where login = $1;`
+
+	row := db.QueryRowContext(ctx, sqlSt, login)
+
+	var customer Customer
+
+	err := row.Scan(&customer.Id, &customer.FirstName, &customer.LastName, &customer.Email, &customer.Phone)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // считаем, что это не ошибка, просто не нашли пользователя
+		}
+		return nil, err
+	}
+	return &customer, nil
 }

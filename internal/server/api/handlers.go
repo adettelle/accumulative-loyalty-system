@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/luhn"
@@ -59,21 +58,14 @@ func (s *DBStorage) Login(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Хендлер доступен только авторизованному пользователю !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	var userLogin string
-
+/*
+func CheckRequestToken(w http.ResponseWriter, r *http.Request) error {
 	// получаем http header вида 'Bearer {jwt}'
 	authHeaderValue := r.Header.Get("Authorization")
 	log.Println("authHeaderValue:", authHeaderValue)
 	if authHeaderValue == "" {
 		w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
-		return
+		return fmt.Errorf("error in CheckRequestToken")
 	}
 
 	// проверяем доступы
@@ -84,14 +76,26 @@ func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
 			login, ok := security.VerifyToken(bearerToken[1])
 			if !ok {
 				w.WriteHeader(http.StatusUnauthorized) // пользователь не аутентифицирован
-				return
+				return fmt.Errorf("error in CheckRequestToken")
 			} else {
-				userLogin = login
+				r.Header.Set("x-user", login) // x - кастомные хэддеры приянто называть с перфиксом x
+				// userLogin = login
 			}
 		}
 	}
+	return nil
+}
+*/
 
-	// var userId = 1
+// Хендлер доступен только авторизованному пользователю
+func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	userLogin := r.Header.Get("x-user")
+
 	var buf bytes.Buffer
 
 	// читаем тело запроса
@@ -176,7 +180,7 @@ func NewOrderResponse(order model.Order) OrderResponse {
 // 	return res
 // }
 
-// Хендлер доступен только авторизованному пользователю !!!!!!!!!!!!!!!!!!!!!!!
+// Хендлер доступен только авторизованному пользователю!!!!!!!!!!!!!!!!!!
 // 401 — пользователь не авторизован.
 func (s *DBStorage) GetOrders(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -184,6 +188,7 @@ func (s *DBStorage) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	// userLogin := r.Header.Get("x-user") // как прикрутить сюда юзера, что только он может это делать???
 
 	orders, err := model.GetOrders(s.DB, s.Ctx)
 	if err != nil {
@@ -220,8 +225,7 @@ type PointsResponse struct {
 // 	Points []PointsResponse `json:"points"`
 // }
 
-// Хендлер доступен только авторизованному пользователю !!!!!!!!!!!!!!!!!!!!!!!
-// 401 — пользователь не авторизован
+// Хендлер доступен только авторизованному пользователю
 func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -229,14 +233,25 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	pointsAccrual, err := model.GetAccrualPoints(s.DB, s.Ctx)
+	userLogin := r.Header.Get("x-user")
+
+	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
-		log.Println(err) // что делать с ошибками?????????????????
+		w.WriteHeader(http.StatusInternalServerError) // это значит, что ошибка с БД!!!!!!!!!!!!!
+		return
+	}
+	if customer == nil {
+		w.WriteHeader(http.StatusNotFound) // это значит, нет такого пользователя
+		return
+	}
+	pointsAccrual, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
+	if err != nil {
+		log.Println(err) // что делать с ошибками?????? InternalServerError всегда лучше писать!!!!!!!!!!!!
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	pointsWithdrawal, err := model.GetWithdrawalPoints(s.DB, s.Ctx)
+	pointsWithdrawal, err := model.GetWithdrawalPoints(customer.Id, s.DB, s.Ctx)
 	if err != nil {
 		log.Println(err) // что делать с ошибками?????????????????
 		w.WriteHeader(http.StatusInternalServerError)
@@ -267,7 +282,7 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 // 	Sum         int    `json:"sum"`
 // }
 
-// Хендлер доступен только авторизованному пользователю !!!!!!!!!!!!!!!!!!!!!!!
+// Хендлер доступен только авторизованному пользователю
 // 401 — пользователь не авторизован
 func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -275,13 +290,25 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// проверить: 401 — пользователь не аутентифицирован
-	// var userId = 1
+	userLogin := r.Header.Get("x-user")
+	if userLogin == "" {
+		w.WriteHeader(http.StatusUnauthorized) // пользователь не авторизован
+	}
+	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError) // это значит, что ошибка с БД!!!!!!!!!!!!!
+		return
+	}
+	if customer == nil {
+		w.WriteHeader(http.StatusNotFound) // это значит, нет такого пользователя
+		return
+	}
+
 	var buf bytes.Buffer
 	var orderResp OrderResponse
 
 	// читаем тело запроса
-	_, err := buf.ReadFrom(r.Body)
+	_, err = buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest) // неверный формат запроса
 		return
@@ -301,7 +328,7 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sumInAccount, err := model.GetAccrualPoints(s.DB, s.Ctx)
+	sumInAccount, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError) //?????????????
 		return
