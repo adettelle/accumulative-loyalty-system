@@ -152,9 +152,11 @@ func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
 type OrderResponse struct {
 	Number        string    `json:"order"`
 	Status        string    `json:"status"`
-	Points        float64   `json:"points"`
+	Points        *float64  `json:"points,omitempty"`
+	Accrual       float64   `json:"accrual,omitempty"`
+	Withdrawal    float64   `json:"withdrawal,omitempty"`
 	CratedAt      time.Time `json:"crated_at"`
-	SumToWithdraw float64   `json:"sum"`
+	SumToWithdraw float64   `json:"sum,omitempty"`
 }
 
 // type OrdersListResponse struct {
@@ -162,23 +164,29 @@ type OrderResponse struct {
 // }
 
 func NewOrderResponse(order model.Order) OrderResponse {
-	return OrderResponse{
+	res := OrderResponse{
 		Number:   order.Number,
 		Status:   order.Status,
-		Points:   order.Points,
 		CratedAt: order.CratedAt, // Формат даты — RFC3339
 	}
+
+	if order.Points > 0 {
+		if *order.Transaction == model.TransactionAccrual {
+			res.Accrual = order.Points
+		} else if *order.Transaction == model.TransactionWithdrawal {
+			res.Withdrawal = order.Points
+		}
+	}
+	return res
 }
 
-// func NewOrderListResponse(orders []model.Order) OrdersListResponse {
-// 	res := OrdersListResponse{
-// 		Orders: []OrderResponse{},
-// 	}
-// 	for _, order := range orders {
-// 		res.Orders = append(res.Orders, NewOrderResponse(order))
-// 	}
-// 	return res
-// }
+func NewOrderListResponse(orders []model.Order) []OrderResponse {
+	res := []OrderResponse{}
+	for _, order := range orders {
+		res = append(res, NewOrderResponse(order))
+	}
+	return res
+}
 
 // Хендлер доступен только авторизованному пользователю!!!!!!!!!!!!!!!!!!
 // 401 — пользователь не авторизован.
@@ -188,21 +196,32 @@ func (s *DBStorage) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	// userLogin := r.Header.Get("x-user") // как прикрутить сюда юзера, что только он может это делать???
-
-	orders, err := model.GetOrders(s.DB, s.Ctx)
+	userLogin := r.Header.Get("x-user")
+	if userLogin == "" {
+		w.WriteHeader(http.StatusUnauthorized) // пользователь не авторизован
+	}
+	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
-		log.Println(err) // что делать с ошибками?????????????????
+		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
+		return
+	}
+	if customer == nil {
+		w.WriteHeader(http.StatusNotFound) // это значит, нет такого пользователя
+		return
+	}
+
+	orders, err := model.GetOrdersByUser(customer.Id, s.DB, s.Ctx)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if len(orders) == 0 { // как зафиксировать этот статус????? ведь ниже он сменится
+	if len(orders) == 0 {
 		w.WriteHeader(http.StatusNoContent) // 204 — нет данных для ответа
 		return
 	}
 
-	resp, err := json.Marshal(orders) // NewOrderListResponse(orders)
+	resp, err := json.Marshal(NewOrderListResponse(orders)) // NewOrderListResponse(orders)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -237,11 +256,11 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // это значит, что ошибка с БД!!!!!!!!!!!!!
+		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
 		return
 	}
 	if customer == nil {
-		w.WriteHeader(http.StatusNotFound) // это значит, нет такого пользователя
+		w.WriteHeader(http.StatusNotFound) // нет такого пользователя
 		return
 	}
 	pointsAccrual, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
@@ -296,7 +315,7 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 	}
 	customer, err := model.GetCustomerByLogin(userLogin, s.DB, s.Ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError) // это значит, что ошибка с БД!!!!!!!!!!!!!
+		w.WriteHeader(http.StatusInternalServerError) // ошибка с БД
 		return
 	}
 	if customer == nil {

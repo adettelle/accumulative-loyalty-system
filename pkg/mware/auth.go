@@ -8,8 +8,7 @@ import (
 	"github.com/adettelle/accumulative-loyalty-system/internal/security"
 )
 
-// AuthMwr добавляет дополнительный код для аутентификации пользователя
-// и возвращает новый http.Handler
+// AuthMwr добавляет аутентификацию пользователя и возвращает новый http.Handler
 func AuthMwr(h http.HandlerFunc) http.HandlerFunc {
 	authFn := func(w http.ResponseWriter, r *http.Request) {
 		// получаем http header вида 'Bearer {jwt}'

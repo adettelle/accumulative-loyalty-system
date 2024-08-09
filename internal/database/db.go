@@ -90,7 +90,7 @@ func CreateTable(db *sql.DB, ctx context.Context) error { // user
 	}
 
 	// rewardType := `create type reward_type_enum as enum ('percent', 'points');`
-	// _, err = db.ExecContext(ctx, rewardType)
+	// _, err = db.ExecContext(ctx, rewardType, model.RewardTypePercent , model.RewardTypePoints)
 	// if err != nil {
 	// 	return err
 	// }
@@ -126,17 +126,5 @@ func Connect(dbParams string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// defer db.Close()
-
-	// делаем запрос
-	row := db.QueryRowContext(context.Background(), "SELECT 1;")
-	// готовим переменную для чтения результата
-	var id int64
-	err = row.Scan(&id) // разбираем результат
-	if err != nil {
-		panic(err)
-	}
-	log.Println("connection test", id)
-
 	return db, nil
 }

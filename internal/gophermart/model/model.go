@@ -16,158 +16,55 @@ const (
 	StatusProcessed       = "processed"
 	TransactionAccrual    = "accrual"
 	TransactionWithdrawal = "withdrawal"
+	RewardTypePercent     = "percent"
+	RewardTypePoints      = "points"
 )
 
-// func CreateTable(db *sql.DB, ctx context.Context) error { // user
-// 	sqlStCustomer := `create table if not exists customer
-// 		(id serial primary key,
-// 		first_name varchar(30) not null,
-// 		last_name varchar(30) not null,
-// 		email varchar(100) not null,
-// 		phone varchar(30) not null,
-// 		login varchar(100),
-// 		password varchar(255),
-// 		created_at timestamp not null default now(),
-// 		unique(phone, email));`
-
-// 	_, err := db.ExecContext(ctx, sqlStCustomer)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// statusType := `create type status_type_enum as enum ('new', 'processing', 'invalid', 'processed');`
-// 	// _, err = db.ExecContext(ctx, statusType)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	sqlStOrder := `create table if not exists "order"
-// 		(id serial primary key,
-// 		customer_id integer,
-// 		number text,
-// 		status status_type_enum not null,
-// 		created_at timestamp not null default now(),
-// 		foreign key (customer_id) references customer (id),
-// 		unique(number, customer_id));`
-
-// 	_, err = db.ExecContext(ctx, sqlStOrder)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// начисления и списания
-// 	// transactionType := `create type transaction_type_enum as enum ('accrual', 'withdrawal');`
-// 	// _, err = db.ExecContext(ctx, transactionType)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	sqlStLoyalty := `create table if not exists loyalty_system
-// 		(id serial primary key,
-// 		customer_id integer,
-// 		order_id integer,
-// 		points double precision,
-// 		transacton transaction_type_enum,
-// 		created_at timestamp not null default now(),
-// 		unique(customer_id, order_id),
-// 		foreign key (customer_id) references customer (id),
-// 		foreign key (order_id) references "order" (id));`
-
-// 	_, err = db.ExecContext(ctx, sqlStLoyalty)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	sqlStProduct := `create table if not exists product
-// 		(id serial primary key,
-// 		title varchar(60),
-// 		price integer);`
-
-// 	_, err = db.ExecContext(ctx, sqlStProduct)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	sqlStOrderProduct := `create table if not exists order_product
-// 		(id serial primary key,
-// 		order_id integer references "order" (id),
-// 		product_id integer references product (id),
-// 		amount integer);`
-
-// 	_, err = db.ExecContext(ctx, sqlStOrderProduct)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// rewardType := `create type reward_type_enum as enum ('percent', 'points');`
-// 	// _, err = db.ExecContext(ctx, rewardType)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	sqlStReward := `create table if not exists reward
-// 		(id serial primary key,
-// 		title varchar(60),
-// 		product_id integer references product (id),
-// 		description varchar(255),
-// 		reward_type reward_type_enum not null);`
-
-// 	_, err = db.ExecContext(ctx, sqlStReward)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	sqlStRewardSystem := `create table if not exists reward_system
-// 		(id serial primary key,
-// 		order_id integer references "order" (id),
-// 		points double precision);`
-
-// 	_, err = db.ExecContext(ctx, sqlStRewardSystem)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// func Connect(dbParams string) (*sql.DB, error) {
-// 	log.Println("Connecting to DB", dbParams)
-// 	db, err := sql.Open("pgx", dbParams)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// defer db.Close()
-
-// 	// делаем запрос
-// 	row := db.QueryRowContext(context.Background(), "SELECT 1;")
-// 	// готовим переменную для чтения результата
-// 	var id int64
-// 	err = row.Scan(&id) // разбираем результат
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println(id)
-
-// 	return db, nil
-// }
-
-// если возврат (0, err) - это значит, что юзера с таким заказом нет
-func GetUserByOrderOld(numOrder string, db *sql.DB, ctx context.Context) (int, error) {
-	sqlSt := `select customer_id from "order" where "number" = $1;`
-	row := db.QueryRowContext(ctx, sqlSt, numOrder)
-
-	var id int
-
-	err := row.Scan(&id)
-	log.Println("err:", err)
-	log.Println("id:", id)
-	// if no rows there is no session
-	if err == sql.ErrNoRows {
-		return 0, nil
-	}
-	// an error other than no rows was returned, return with error
-	return id, err
+type Order struct {
+	Id          int
+	Number      string
+	Status      string
+	Points      float64
+	Transaction *string
+	CratedAt    time.Time
 }
+
+type Customer struct {
+	Id        int
+	FirstName string
+	LastName  string
+	Email     string
+	Phone     string
+	// Roles
+	// IsDeleted
+}
+
+// транзакция списания
+type TransactionW struct {
+	// Id       string
+	OrderNumber string
+	// Status   string
+	Points   float64
+	CratedAt time.Time
+}
+
+// // если возврат (0, err) - это значит, что юзера с таким заказом нет
+// func GetUserByOrderOld(numOrder string, db *sql.DB, ctx context.Context) (int, error) {
+// 	sqlSt := `select customer_id from "order" where "number" = $1;`
+// 	row := db.QueryRowContext(ctx, sqlSt, numOrder)
+
+// 	var id int
+
+// 	err := row.Scan(&id)
+// 	log.Println("err:", err)
+// 	log.Println("id:", id)
+// 	// if no rows there is no session
+// 	if err == sql.ErrNoRows {
+// 		return 0, nil
+// 	}
+// 	// an error other than no rows was returned, return with error
+// 	return id, err
+// }
 
 // GetUserByOrder возвращает id юзера и ошибку
 func GetUserByOrder(numOrder string, db *sql.DB, ctx context.Context) (int, error) {
@@ -264,34 +161,19 @@ func UserHasOrder(numOrder string, userId int, db *sql.DB, ctx context.Context) 
 // 	return nil
 // }
 
-type Order struct {
-	Id       string // почему string???????????????
-	Number   string
-	Status   string
-	Points   float64
-	CratedAt time.Time
-}
-
-type Customer struct {
-	Id        int // почему string???????????????
-	FirstName string
-	LastName  string
-	Email     string
-	Phone     string
-	// Roles
-	// IsDeleted
-}
-
-func GetOrders(db *sql.DB, ctx context.Context) ([]Order, error) {
+func GetOrdersByUser(userID int, db *sql.DB, ctx context.Context) ([]Order, error) {
 	orders := make([]Order, 0)
 
-	sqlSt := `select ord.id, "number", status, ls.points, ord.created_at 
+	sqlSt := `select ord.id, "number", status, coalesce(ls.points, 0), ls.transacton, ord.created_at 
 		from "order" ord
-		join loyalty_system ls 
-		on ls.order_id = ord.id`
+		left join loyalty_system ls 
+		on ls.order_id = ord.id
+		where ord.customer_id = $1
+		order by ord.created_at;`
 
-	rows, err := db.QueryContext(ctx, sqlSt)
+	rows, err := db.QueryContext(ctx, sqlSt, userID)
 	if err != nil {
+		log.Println("error: ", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -299,8 +181,9 @@ func GetOrders(db *sql.DB, ctx context.Context) ([]Order, error) {
 	// пробегаем по всем записям
 	for rows.Next() {
 		var ord Order
-		err := rows.Scan(&ord.Id, &ord.Number, &ord.Status, &ord.Points, &ord.CratedAt)
+		err := rows.Scan(&ord.Id, &ord.Number, &ord.Status, &ord.Points, &ord.Transaction, &ord.CratedAt)
 		if err != nil {
+			log.Println("error: ", err)
 			return nil, err
 		}
 
@@ -364,15 +247,6 @@ func Withdraw(order string, sum float64, db *sql.DB, ctx context.Context) error 
 	}
 
 	return nil
-}
-
-// транзакция списания
-type TransactionW struct {
-	// Id       string
-	OrderNumber string
-	// Status   string
-	Points   float64
-	CratedAt time.Time
 }
 
 // AllWithdrawals показывает все транзакции с выводом средств
