@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/adettelle/accumulative-loyalty-system/internal/database"
 	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/config"
-	"github.com/adettelle/accumulative-loyalty-system/internal/server/api"
+	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/database"
+	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/server/api"
 	"github.com/adettelle/accumulative-loyalty-system/pkg/mware"
 	"github.com/go-chi/chi/v5"
 )
@@ -24,10 +24,8 @@ func main() {
 	if config.DBUri != "" {
 		uri = config.DBUri
 	}
-	ps := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		`localhost`, uri, `postgres`, `password`, `loyalty-system`) // `5433`
 
-	db, err := database.Connect(ps)
+	db, err := database.Connect(uri)
 	if err != nil {
 		log.Fatal(err)
 	}

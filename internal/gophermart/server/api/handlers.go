@@ -129,6 +129,10 @@ func (s *DBStorage) AddOrder(w http.ResponseWriter, r *http.Request) {
 	log.Println("checked by Luhn numOrder:", numOrder)
 
 	orderExists, err := model.OrderExists(numOrder, s.DB, s.Ctx) // что делать с ошибкой?????????
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	if !orderExists {
 		log.Println("Writing to DB")
 
