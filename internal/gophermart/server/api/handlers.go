@@ -189,7 +189,7 @@ func (s *DBStorage) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orders, err := model.GetOrdersByUser(customer.Id, s.DB, s.Ctx)
+	orders, err := model.GetOrdersByUser(customer.ID, s.DB, s.Ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -242,14 +242,14 @@ func (s *DBStorage) GetBalance(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound) // нет такого пользователя
 		return
 	}
-	pointsAccrual, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
+	pointsAccrual, err := model.GetAccrualPoints(customer.ID, s.DB, s.Ctx)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	pointsWithdrawal, err := model.GetWithdrawalPoints(customer.Id, s.DB, s.Ctx)
+	pointsWithdrawal, err := model.GetWithdrawalPoints(customer.ID, s.DB, s.Ctx)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -328,7 +328,7 @@ func (s *DBStorage) PostWithdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sumInAccount, err := model.GetAccrualPoints(customer.Id, s.DB, s.Ctx)
+	sumInAccount, err := model.GetAccrualPoints(customer.ID, s.DB, s.Ctx)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -403,7 +403,7 @@ func (s *DBStorage) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	transactions, err := model.WithdrawalsByUser(customer.Id, s.DB, s.Ctx)
+	transactions, err := model.WithdrawalsByUser(customer.ID, s.DB, s.Ctx)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)

@@ -21,7 +21,7 @@ const (
 )
 
 type Order struct {
-	Id          int
+	ID          int
 	Number      string
 	Status      string
 	Points      float64
@@ -30,7 +30,7 @@ type Order struct {
 }
 
 type Customer struct {
-	Id        int
+	ID        int
 	FirstName string
 	LastName  string
 	Email     string
@@ -130,22 +130,22 @@ func OrderExists(numOrder string, db *sql.DB, ctx context.Context) (bool, error)
 // 0, false, nil - такого номера заказа ни у кого нет
 // id, false, err - такой номера заказа уже есть у другого пользователя
 // id, true, err - такой номера заказа есть у проверяемого пользователя
-func UserHasOrder(numOrder string, userId int, db *sql.DB, ctx context.Context) (int, bool, error) {
+func UserHasOrder(numOrder string, userID int, db *sql.DB, ctx context.Context) (int, bool, error) {
 	// если 0, err=nil - это значит, что юзера с таким заказом нет
-	userIdByGet, err := GetUserByOrder(numOrder, db, ctx)
+	userIDByGet, err := GetUserByOrder(numOrder, db, ctx)
 	if err == sql.ErrNoRows { // такого номера заказа ни у кого нет
 		log.Printf("There is no user with order number %s", numOrder)
-		return userIdByGet, false, nil
+		return userIDByGet, false, nil
 	}
 	// if userIdByGet == 0 { // такого номера заказа у пользователя нет
 	// 	log.Printf("There is no user with order number %s", numOrder)
 	// 	return userIdByGet, false, err
 	// }
-	if userIdByGet != userId { // такой номера заказа уже есть у другого пользователя
-		log.Printf("There is a user %d with order number %s", userIdByGet, numOrder)
-		return userIdByGet, false, err
+	if userIDByGet != userID { // такой номера заказа уже есть у другого пользователя
+		log.Printf("There is a user %d with order number %s", userIDByGet, numOrder)
+		return userIDByGet, false, err
 	}
-	return userIdByGet, true, err // такой номера заказа есть у проверяемого пользователя
+	return userIDByGet, true, err // такой номера заказа есть у проверяемого пользователя
 }
 
 // func AddOrder(numOrder string, userId int, db *sql.DB, ctx context.Context) error {
@@ -172,7 +172,7 @@ func GetOrdersByUser(userID int, db *sql.DB, ctx context.Context) ([]Order, erro
 		order by ord.created_at;`
 
 	rows, err := db.QueryContext(ctx, sqlSt, userID)
-	if err != nil {
+	if err != nil || rows.Err() != nil {
 		log.Println("error: ", err)
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func GetOrdersByUser(userID int, db *sql.DB, ctx context.Context) ([]Order, erro
 	// пробегаем по всем записям
 	for rows.Next() {
 		var ord Order
-		err := rows.Scan(&ord.Id, &ord.Number, &ord.Status, &ord.Points, &ord.Transaction, &ord.CratedAt)
+		err := rows.Scan(&ord.ID, &ord.Number, &ord.Status, &ord.Points, &ord.Transaction, &ord.CratedAt)
 		if err != nil {
 			log.Println("error: ", err)
 			return nil, err
@@ -260,7 +260,7 @@ func WithdrawalsByUser(userID int, db *sql.DB, ctx context.Context) ([]Transacti
 		order by created_at desc;`
 
 	rows, err := db.QueryContext(ctx, sqlSt, TransactionWithdrawal, userID)
-	if err != nil {
+	if err != nil || rows.Err() != nil {
 		return nil, err
 	}
 	defer rows.Close()
@@ -285,7 +285,7 @@ func GetCustomerByLogin(login string, db *sql.DB, ctx context.Context) (*Custome
 
 	var customer Customer
 
-	err := row.Scan(&customer.Id, &customer.FirstName, &customer.LastName, &customer.Email, &customer.Phone)
+	err := row.Scan(&customer.ID, &customer.FirstName, &customer.LastName, &customer.Email, &customer.Phone)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // считаем, что это не ошибка, просто не нашли пользователя
