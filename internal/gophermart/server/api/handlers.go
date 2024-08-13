@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/luhn"
 	"github.com/adettelle/accumulative-loyalty-system/internal/gophermart/model"
 	"github.com/adettelle/accumulative-loyalty-system/internal/security"
+	"github.com/adettelle/accumulative-loyalty-system/pkg/luhn"
 )
 
 type DBStorage struct {

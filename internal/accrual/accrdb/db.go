@@ -17,20 +17,37 @@ func CreateTable(db *sql.DB, ctx context.Context) error {
 
 	sqlStReward := `create table if not exists reward 
 		(id serial primary key, 
-		"match" varchar(60) not null,
-		reward_type reward_type_enum not null);`
+		"match" varchar(100) not null,
+		reward_type reward_type_enum not null,
+		type_value double precision);`
 
 	_, err := db.ExecContext(ctx, sqlStReward)
 	if err != nil {
 		return err
 	}
 
+	// statusType := `create type status_type_enum as enum ($1, $2, $3, $4);`
+	// _, err = db.ExecContext(ctx, statusType, accrmodel.StatusRegistered, accrmodel.StatusProcessing, accrmodel.StatusInvalid, accrmodel.StatusProcessed)
+	// if err != nil {
+	// 	return err
+	// }
+
+	sqlStOrder := `create table if not exists "order" 
+		(id serial primary key, 
+		order_number text,
+		status status_type_enum not null,
+		reward_amount double precision);`
+
+	_, err = db.ExecContext(ctx, sqlStOrder)
+	if err != nil {
+		return err
+	}
+
 	sqlStOrderItem := `create table if not exists order_item 
 		(id serial primary key, 
-		order_number integer,
-		price double precision,
-		reward_processed boolean,
-		reward_amount double precision);`
+		order_id integer references "order" (id),
+		product varchar(100),
+		price double precision);`
 
 	_, err = db.ExecContext(ctx, sqlStOrderItem)
 	if err != nil {

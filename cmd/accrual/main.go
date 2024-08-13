@@ -37,7 +37,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// конфигурирование сервера
-	//r.Get("/api/orders/{number}", storage.GetAccrualPoints)
+	r.Get("/api/orders/{number}", storage.GetOrderByNumber)
 	r.Post("/api/orders", storage.RegisterOrder)
 	r.Post("/api/goods", storage.RegisterRewardType)
 
